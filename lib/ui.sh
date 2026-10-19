@@ -15,13 +15,13 @@ ui_init() {
 
 ui_heading() {
   local title="$1"
-  echo ""
-  echo "=== $title ==="
-  echo ""
+  echo "" >&2
+  echo "=== $title ===" >&2
+  echo "" >&2
 }
 
 ui_msg() {
-  echo "$1"
+  echo "$1" >&2
 }
 
 ui_pause() {
@@ -77,7 +77,7 @@ ui_menu() {
 
   if ui_is_non_interactive; then
     log_warn "Non-interactive: menu '${prompt}' -> default '${options[0]}'"
-    echo "${options[0]}"
+    printf '%s' "${options[0]}"
     return 0
   fi
 
@@ -89,23 +89,23 @@ ui_menu() {
       tag=$((tag + 1))
     done
     choice="$(dialog --stdout --menu "$prompt" 18 70 12 "${args[@]}")" || return 1
-    echo "${options[$choice]}"
+    printf '%s' "${options[$choice]}"
     return 0
   fi
 
   ui_heading "$prompt"
   i=1
   for opt in "${options[@]}"; do
-    echo "  $i) $opt"
+    echo "  $i) $opt" >&2
     i=$((i + 1))
   done
   while true; do
     read -r -p "Choice [1-${#options[@]}]: " choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
-      echo "${options[$((choice - 1))]}"
+      printf '%s' "${options[$((choice - 1))]}"
       return 0
     fi
-    echo "Invalid choice."
+    echo "Invalid choice." >&2
   done
 }
 

@@ -157,6 +157,8 @@ disk_validate_path() {
 
 confirm_disk_wipe() {
   local disk="$1"
+  disk="$(disk_normalize_path "$disk")"
+  disk_validate_path "$disk" || die "Invalid install disk: '$1'"
   ui_heading "Destructive disk operation"
   ui_msg "Target disk: $disk"
   ui_msg ""
