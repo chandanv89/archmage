@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
 
 bootloader_root_uuid() {
-  local root
+  local root uuid
   root="$(state_get part_root)"
-  blkid -s UUID -o value "$root"
+  uuid="$(blkid -s UUID -o value "$root" 2>/dev/null || true)"
+  if [[ -n "$uuid" ]]; then
+    echo "$uuid"
+    return 0
+  fi
+  if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
+    log_info "[dry-run] no UUID on $root; using placeholder for bootloader config"
+    echo "00000000-0000-0000-0000-000000000000"
+    return 0
+  fi
+  die "Could not read UUID for root partition: $root"
 }
 
 bootloader_install_systemd_boot() {
