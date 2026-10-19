@@ -8,9 +8,24 @@ ARCHMAGE_MNT="${ARCHMAGE_MNT:-/mnt}"
 
 ARCHMAGE_DRY_RUN=0
 ARCHMAGE_RESUME=0
+ARCHMAGE_RESET=0
+ARCHMAGE_SHOW_PATHS=0
+ARCHMAGE_EXPORT_ONLY=0
+ARCHMAGE_EXPORT_CONFIG=""
 ARCHMAGE_CONFIG=""
 ARCHMAGE_FROM_STEP=""
 ARCHMAGE_ONLY_STEP=""
+
+archmage_print_paths() {
+  ui_msg "Archmage artifact paths:"
+  ui_msg "  Log file:              $ARCHMAGE_LOG"
+  ui_msg "  State (env):           $ARCHMAGE_STATE_FILE"
+  ui_msg "  State (JSON, needs jq): $ARCHMAGE_STATE_JSON"
+  ui_msg "  Exported answers:      $ARCHMAGE_STATE_DIR/exported-answers.json"
+  ui_msg "  Package profiles:      $ARCHMAGE_ROOT/config/profiles.yaml"
+  ui_msg "  Example --config:      $ARCHMAGE_ROOT/examples/answers.json"
+  ui_msg ""
+}
 
 log() {
   local level="$1"
@@ -185,6 +200,22 @@ parse_cli_args() {
       --resume)
         ARCHMAGE_RESUME=1
         ;;
+      --reset)
+        ARCHMAGE_RESET=1
+        ;;
+      --show-paths)
+        ARCHMAGE_SHOW_PATHS=1
+        ;;
+      --export-config)
+        shift
+        ARCHMAGE_EXPORT_ONLY=1
+        if [[ $# -ge 1 && "$1" != -* ]]; then
+          ARCHMAGE_EXPORT_CONFIG="$1"
+          shift
+        else
+          ARCHMAGE_EXPORT_CONFIG="${ARCHMAGE_STATE_DIR}/exported-answers.json"
+        fi
+        ;;
       --dry-run)
         ARCHMAGE_DRY_RUN=1
         ;;
@@ -210,6 +241,9 @@ Archmage - guided Arch Linux installation wizard
 Usage: install.sh [options]
 
   --resume          Continue using saved state
+  --reset           Clear saved progress and start from the first step
+  --show-paths      Print log, state, and config file locations
+  --export-config [FILE]  Write answers JSON from saved state and exit
   --dry-run         Print commands without executing destructive actions
   --config FILE     Non-interactive answers (JSON, requires jq)
   --from-step ID    Start at step ID

@@ -14,6 +14,15 @@ step_finish_run() {
   ui_msg "User:        $(state_get username)"
   ui_msg "Desktop:     $(state_get desktop_profile)"
   ui_msg "Log file:    $ARCHMAGE_LOG"
+  ui_msg "State:       $ARCHMAGE_STATE_FILE"
+  if [[ -f "$ARCHMAGE_STATE_JSON" ]]; then
+    ui_msg "State JSON:  $ARCHMAGE_STATE_JSON"
+  fi
+  state_export_answers "$ARCHMAGE_STATE_DIR/exported-answers.json" || true
+  if [[ -f "$ARCHMAGE_STATE_DIR/exported-answers.json" ]]; then
+    ui_msg "Answers JSON: $ARCHMAGE_STATE_DIR/exported-answers.json"
+  fi
+  ui_msg "Profiles:    $ARCHMAGE_ROOT/config/profiles.yaml"
   ui_msg ""
   ui_msg "Archmage installation complete."
 

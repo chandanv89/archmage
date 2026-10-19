@@ -110,10 +110,37 @@ run_step() {
 main() {
   parse_cli_args "$@"
   require_root
+
+  if [[ "$ARCHMAGE_SHOW_PATHS" -eq 1 ]]; then
+    archmage_print_paths
+    exit 0
+  fi
+
+  if [[ "$ARCHMAGE_EXPORT_ONLY" -eq 1 ]]; then
+    init_logging
+    ui_init
+    archmage_print_paths
+    state_init
+    state_export_answers "$ARCHMAGE_EXPORT_CONFIG" || die "Export failed (install jq or check state in $ARCHMAGE_STATE_FILE)."
+    exit 0
+  fi
+
   init_logging
   banner_show
   ui_init
+  archmage_print_paths
   prereqs_before_config
+
+  if [[ "$ARCHMAGE_RESET" -eq 1 && "$ARCHMAGE_RESUME" -eq 1 ]]; then
+    die "Use either --reset or --resume, not both."
+  fi
+
+  if [[ "$ARCHMAGE_RESET" -eq 1 ]]; then
+    mkdir -p "$ARCHMAGE_STATE_DIR"
+    state_reset
+    log_info "Saved progress cleared (--reset)."
+  fi
+
   state_init
 
   if [[ -n "$ARCHMAGE_CONFIG" ]]; then

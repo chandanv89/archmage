@@ -40,6 +40,39 @@ Non-interactive:
 
 Log file: `/var/log/archmage.log`. Resume state: `/var/lib/archmage/state.env`.
 
+### Logs and config files
+
+| What | Path |
+|------|------|
+| Install log (every run appends here) | `/var/log/archmage.log` |
+| Saved wizard state | `/var/lib/archmage/state.env` |
+| Same state as JSON (when `jq` is installed) | `/var/lib/archmage/state.json` |
+| Answers template after a run or dry-run | `/var/lib/archmage/exported-answers.json` |
+| Desktop/package profiles (shipped with Archmage) | `config/profiles.yaml` in the repo |
+| Input for `--config` | `examples/answers.json` (or your own JSON) |
+
+Dry-run does **not** create a separate config file by itself; it still updates state and the log. At the end of a full run (including `--dry-run`), Archmage writes `exported-answers.json` from your choices (passwords are **not** stored; add `root_password` / `user_password` before reusing as `--config`).
+
+```bash
+./archmage --show-paths
+./archmage --export-config /root/my-answers.json   # from current state only, no install steps
+tail -f /var/log/archmage.log
+```
+
+From another machine (SSH), copy artifacts off the live ISO:
+
+```bash
+scp root@VM_IP:/var/log/archmage.log .
+scp root@VM_IP:/var/lib/archmage/state.json .
+scp root@VM_IP:/var/lib/archmage/exported-answers.json .
+```
+
+If a step failed and you want a clean run (not `--resume` / `--from-step`), clear state first:
+
+```bash
+./archmage --reset
+```
+
 ## What it does
 
 | Phase | Actions |
@@ -60,6 +93,9 @@ Destructive disk steps require confirming `YES /dev/yourdisk`.
 | Flag | Description |
 |------|-------------|
 | `--resume` | Continue from saved state |
+| `--reset` | Delete saved state and run from the first step (use after a failed run) |
+| `--show-paths` | Print paths to log, state, profiles, and examples |
+| `--export-config [FILE]` | Write `exported-answers.json` from saved state and exit |
 | `--dry-run` | Print planned commands; skip format, pacstrap, and chroot changes |
 | `--config FILE` | Load answers from JSON (see `examples/answers.json`) |
 | `--from-step ID` | Start at a given step |
