@@ -3,6 +3,10 @@
 
 UI_USE_DIALOG=0
 
+ui_is_non_interactive() {
+  [[ -n "$ARCHMAGE_CONFIG" ]] || [[ ! -t 0 ]]
+}
+
 ui_init() {
   if command -v dialog >/dev/null 2>&1 && [[ -t 1 ]]; then
     UI_USE_DIALOG=1
@@ -21,6 +25,9 @@ ui_msg() {
 }
 
 ui_pause() {
+  if [[ -n "$ARCHMAGE_CONFIG" ]] || [[ ! -t 0 ]]; then
+    return 0
+  fi
   local msg="${1:-Press Enter to continue...}"
   if [[ "$UI_USE_DIALOG" -eq 1 ]]; then
     dialog --title "Archmage" --msgbox "$msg" 10 70
@@ -33,6 +40,10 @@ ui_input() {
   local prompt="$1"
   local default="${2:-}"
   local result=""
+  if ui_is_non_interactive; then
+    printf '%s' "$default"
+    return 0
+  fi
   if [[ "$UI_USE_DIALOG" -eq 1 ]]; then
     result="$(dialog --stdout --inputbox "$prompt" 10 70 "$default")" || return 1
   else
@@ -63,6 +74,12 @@ ui_menu() {
   shift
   local options=("$@")
   local i choice
+
+  if ui_is_non_interactive; then
+    log_warn "Non-interactive: menu '${prompt}' -> default '${options[0]}'"
+    echo "${options[0]}"
+    return 0
+  fi
 
   if [[ "$UI_USE_DIALOG" -eq 1 ]]; then
     local args=()
@@ -95,6 +112,10 @@ ui_menu() {
 ui_yesno() {
   local prompt="$1"
   local default_yes="${2:-0}"
+  if ui_is_non_interactive; then
+    [[ "$default_yes" -eq 1 ]] && return 0
+    return 1
+  fi
   if [[ "$UI_USE_DIALOG" -eq 1 ]]; then
     if dialog --title "Archmage" --yesno "$prompt" 10 70; then
       return 0
@@ -124,11 +145,9 @@ config_or_prompt() {
     return 0
   fi
   if [[ -n "$ARCHMAGE_CONFIG" ]]; then
-    existing="$(state_get "$key")"
-    if [[ -n "$existing" ]]; then
-      echo "$existing"
-      return 0
-    fi
+    echo "$default"
+    state_set "$key" "$default"
+    return 0
   fi
   local val
   val="$(ui_input "$prompt" "$default")"

@@ -1,0 +1,18 @@
+{
+  "keymap": "us",
+  "mirror_country": "IE",
+  "disk": "/dev/sda",
+  "root_fs": "ext4",
+  "use_swap": "1",
+  "kernel_pkg": "linux",
+  "bootloader": "grub",
+  "desktop_profile": "none",
+  "extras_audio": "1",
+  "extras_bluetooth": "0",
+  "timezone": "Europe/Dublin",
+  "locale": "en_IE.UTF-8",
+  "hostname": "archbox",
+  "username": "archuser",
+  "root_password": "change-me-root",
+  "user_password": "change-me-user"
+}

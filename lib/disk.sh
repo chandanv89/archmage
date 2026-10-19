@@ -184,6 +184,10 @@ step_disk_can_skip() {
 }
 
 step_disk_run() {
+  if [[ -z "$(state_get boot_mode)" ]]; then
+    state_set boot_mode "$(detect_boot_mode)"
+  fi
+
   if ui_yesno "Open manual fdisk instead of guided partitioning?" 0; then
     local disk
     disk="$(disk_pick_device)"

@@ -66,6 +66,11 @@ packages_select_bootloader() {
   mode="$(state_get boot_mode)"
   bl="$(state_get bootloader)"
   if [[ -n "$bl" ]]; then
+    if [[ "$mode" != uefi* && "$bl" == "systemd-boot" ]]; then
+      log_warn "systemd-boot needs UEFI; using grub on BIOS firmware."
+      bl="grub"
+      state_set bootloader "$bl"
+    fi
     echo "$bl"
     return 0
   fi

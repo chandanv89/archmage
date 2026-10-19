@@ -52,6 +52,24 @@ step_network_can_skip() {
 }
 
 step_network_run() {
+  if [[ -n "$ARCHMAGE_CONFIG" ]] && [[ -z "$(state_get net_iface)" ]]; then
+    local iface
+    iface="$(network_list_interfaces | head -n1)"
+    [[ -n "$iface" ]] || iface="eth0"
+    state_set net_iface "$iface"
+    network_ensure_up "$iface"
+    if run_cmd ping -c 1 -W 3 ping.archlinux.org 2>/dev/null; then
+      state_set network_ok "1"
+      ui_msg "Network assumed up (${iface}); connectivity OK."
+      return 0
+    fi
+    if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
+      state_set network_ok "1"
+      ui_msg "Network step skipped for dry-run (--config, interface ${iface})."
+      return 0
+    fi
+  fi
+
   ui_msg "Network interfaces:"
   network_list_interfaces | sed 's/^/  /'
 

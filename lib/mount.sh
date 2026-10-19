@@ -34,5 +34,9 @@ step_mount_run() {
     run_cmd umount -R "$ARCHMAGE_MNT" 2>/dev/null || true
   fi
   mount_install_tree
+  if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
+    log_info "[dry-run] mount layout prepared (not mounted)"
+    return 0
+  fi
   findmnt "$ARCHMAGE_MNT"
 }

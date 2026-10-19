@@ -15,6 +15,7 @@ state_init() {
     [[ -z "$line" || "$line" =~ ^# ]] && continue
     key="${line%%=*}"
     val="${line#*=}"
+    [[ -n "$key" ]] || continue
     ARCHMAGE_STATE["$key"]="$val"
   done < "$ARCHMAGE_STATE_FILE"
 }
