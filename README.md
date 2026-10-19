@@ -78,7 +78,7 @@ If a step failed and you want a clean run (not `--resume` / `--from-step`), clea
 | Phase | Actions |
 |-------|---------|
 | Live session | Keymap, boot mode (UEFI/BIOS), network check, clock sync |
-| Disk | Guided GPT (UEFI) or MBR (BIOS): ESP + root (ext4 or btrfs), optional swap; manual `fdisk` path available |
+| Disk | Pick target disk from a numbered list (`lsblk`); guided GPT (UEFI) or MBR (BIOS): ESP + root (ext4 or btrfs), optional swap; manual `fdisk` path available |
 | Install | `reflector` mirrorlist, `pacstrap` with kernel, firmware, microcode, NetworkManager, and profile packages |
 | Target system | Locale, timezone, hostname, users, sudo, initramfs if needed |
 | Boot | `systemd-boot` (UEFI default) or GRUB; enable display manager for chosen desktop |

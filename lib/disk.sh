@@ -4,6 +4,36 @@ disk_list_candidates() {
   lsblk -dpno NAME,SIZE,MODEL,TRAN | grep -vE 'loop|ram' || true
 }
 
+disk_choose_from_menu() {
+  local -a paths=() labels=()
+  local line dev
+
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    dev="${line%%[[:space:]]*}"
+    disk_validate_path "$dev" || continue
+    device_is_safe_target "$dev" || continue
+    paths+=("$dev")
+    labels+=("$line")
+  done < <(disk_list_candidates)
+
+  if [[ ${#paths[@]} -eq 0 ]]; then
+    die "No suitable disks found for installation."
+  fi
+
+  if [[ ${#paths[@]} -eq 1 ]]; then
+    ui_msg "Only one install disk: ${labels[0]}"
+    echo "${paths[0]}"
+    return 0
+  fi
+
+  local picked
+  picked="$(ui_menu "Select install disk (number)" "${labels[@]}")"
+  dev="${picked%%[[:space:]]*}"
+  disk_validate_path "$dev" || die "Could not resolve disk from menu choice."
+  echo "$dev"
+}
+
 disk_partition_path() {
   local disk="$1"
   local part_num="$2"
@@ -15,22 +45,26 @@ disk_partition_path() {
 }
 
 disk_pick_device() {
-  local existing
+  local existing disk
   existing="$(state_get disk)"
   if [[ -n "$existing" ]]; then
-    echo "$existing"
-    return 0
+    existing="$(disk_normalize_path "$existing")"
+    if disk_validate_path "$existing" && device_is_safe_target "$existing"; then
+      echo "$existing"
+      return 0
+    fi
+    log_warn "Saved disk '$existing' is invalid; choose again."
   fi
 
-  ui_msg "Available disks:"
-  disk_list_candidates | sed 's/^/  /'
-
-  local disk
-  disk="$(config_or_prompt disk "Target disk (e.g. /dev/vda)" "")"
-  disk="$(disk_normalize_path "$disk")"
-  [[ -n "$disk" ]] || die "Disk is required."
-  disk_validate_path "$disk" || die "Invalid disk '$disk'. Enter only the device path (e.g. /dev/sda), not the full lsblk listing."
-  device_is_safe_target "$disk" || die "Disk $disk is mounted or not a safe target."
+  if [[ -n "$ARCHMAGE_CONFIG" ]]; then
+    disk="$(config_or_prompt disk "Target disk (e.g. /dev/sda)" "")"
+    disk="$(disk_normalize_path "$disk")"
+    [[ -n "$disk" ]] || die "Disk is required in --config (key: disk)."
+    disk_validate_path "$disk" || die "Invalid disk in config: '$disk'"
+    device_is_safe_target "$disk" || die "Disk $disk is mounted or not a safe target."
+  else
+    disk="$(disk_choose_from_menu)"
+  fi
 
   state_set disk "$disk"
   echo "$disk"
