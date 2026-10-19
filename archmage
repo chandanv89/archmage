@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ARCHMAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export ARCHMAGE_ROOT
+
+# shellcheck source=lib/common.sh
+source "$ARCHMAGE_ROOT/lib/common.sh"
+# shellcheck source=lib/prereqs.sh
+source "$ARCHMAGE_ROOT/lib/prereqs.sh"
+# shellcheck source=lib/state.sh
+source "$ARCHMAGE_ROOT/lib/state.sh"
+# shellcheck source=lib/ui.sh
+source "$ARCHMAGE_ROOT/lib/ui.sh"
+# shellcheck source=lib/banner.sh
+source "$ARCHMAGE_ROOT/lib/banner.sh"
+# shellcheck source=lib/preflight.sh
+source "$ARCHMAGE_ROOT/lib/preflight.sh"
+# shellcheck source=lib/network.sh
+source "$ARCHMAGE_ROOT/lib/network.sh"
+# shellcheck source=lib/disk.sh
+source "$ARCHMAGE_ROOT/lib/disk.sh"
+# shellcheck source=lib/mount.sh
+source "$ARCHMAGE_ROOT/lib/mount.sh"
+# shellcheck source=lib/mirrors.sh
+source "$ARCHMAGE_ROOT/lib/mirrors.sh"
+# shellcheck source=lib/packages.sh
+source "$ARCHMAGE_ROOT/lib/packages.sh"
+# shellcheck source=lib/chroot.sh
+source "$ARCHMAGE_ROOT/lib/chroot.sh"
+# shellcheck source=lib/users.sh
+source "$ARCHMAGE_ROOT/lib/users.sh"
+# shellcheck source=lib/bootloader.sh
+source "$ARCHMAGE_ROOT/lib/bootloader.sh"
+# shellcheck source=lib/desktop.sh
+source "$ARCHMAGE_ROOT/lib/desktop.sh"
+
+for step_file in "$ARCHMAGE_ROOT"/steps/*.sh; do
+  # shellcheck source=/dev/null
+  source "$step_file"
+done
+
+ARCHMAGE_STEPS=(
+  preflight
+  live_keyboard
+  network
+  clock
+  disk
+  mount
+  mirrors
+  pacstrap
+  fstab
+  chroot_configure
+  bootloader
+  desktop
+  finish
+)
+
+step_should_run() {
+  local id="$1"
+  if [[ -n "$ARCHMAGE_ONLY_STEP" && "$ARCHMAGE_ONLY_STEP" != "$id" ]]; then
+    return 1
+  fi
+  if [[ -n "$ARCHMAGE_FROM_STEP" ]]; then
+    local found=0
+    local s
+    for s in "${ARCHMAGE_STEPS[@]}"; do
+      if [[ "$s" == "$ARCHMAGE_FROM_STEP" ]]; then
+        found=1
+      fi
+      if [[ "$s" == "$id" && "$found" -eq 1 ]]; then
+        return 0
+      fi
+      if [[ "$s" == "$id" && "$found" -eq 0 ]]; then
+        return 1
+      fi
+    done
+    [[ "$found" -eq 1 ]] || die "Unknown --from-step: $ARCHMAGE_FROM_STEP"
+  fi
+  return 0
+}
+
+run_step() {
+  local id="$1"
+  local skip_fn="step_${id}_can_skip"
+  local run_fn="step_${id}_run"
+
+  if ! step_should_run "$id"; then
+    return 0
+  fi
+
+  if declare -f "$skip_fn" >/dev/null 2>&1; then
+    if "$skip_fn"; then
+      log_info "Skipping step $id (already satisfied)"
+      return 0
+    fi
+  fi
+
+  if ! declare -f "$run_fn" >/dev/null 2>&1; then
+    die "Step implementation missing: $run_fn"
+  fi
+
+  ui_heading "Step: $id"
+  log_info "Running step: $id"
+  "$run_fn"
+  state_mark_step_done "$id"
+  log_info "Completed step: $id"
+}
+
+main() {
+  parse_cli_args "$@"
+  require_root
+  init_logging
+  banner_show
+  ui_init
+  prereqs_before_config
+  state_init
+
+  if [[ -n "$ARCHMAGE_CONFIG" ]]; then
+    load_config_file "$ARCHMAGE_CONFIG"
+  elif [[ "$ARCHMAGE_RESUME" -ne 1 && ! -f "$ARCHMAGE_STATE_FILE" ]]; then
+    state_reset
+  fi
+
+  local step
+  for step in "${ARCHMAGE_STEPS[@]}"; do
+    run_step "$step"
+  done
+
+  log_info "All steps completed."
+}
+
+main "$@"

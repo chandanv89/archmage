@@ -1,0 +1,68 @@
+# Package profiles for Archmage (parsed by lib/packages.sh)
+# Format: profile_name: packages are listed under "packages:"
+
+base_always:
+  packages:
+    - base
+    - linux-firmware
+    - nano
+    - man-db
+    - man-pages
+    - texinfo
+    - networkmanager
+    - sudo
+
+bootloader_systemd_boot:
+  packages:
+    - systemd
+    - efibootmgr
+
+bootloader_grub:
+  packages:
+    - grub
+    - efibootmgr
+
+extras_audio:
+  packages:
+    - pipewire
+    - wireplumber
+    - pipewire-pulse
+    - pipewire-alsa
+
+extras_bluetooth:
+  packages:
+    - bluez
+    - bluez-utils
+
+desktop_none:
+  packages: []
+
+desktop_kde:
+  packages:
+    - plasma-meta
+    - kde-applications
+  display_manager: sddm
+
+desktop_gnome:
+  packages:
+    - gnome
+    - gnome-extra
+  display_manager: gdm
+
+desktop_xfce:
+  packages:
+    - xfce4
+    - xfce4-goodies
+  display_manager: lightdm
+  display_manager_pkg: lightdm-gtk-greeter
+
+desktop_hyprland:
+  packages:
+    - hyprland
+    - waybar
+    - wofi
+    - kitty
+    - polkit
+    - seatd
+  display_manager: ""
+  notes: Enable seatd and polkit; no display manager by default.
