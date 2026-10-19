@@ -91,9 +91,10 @@ desktop_hyprland_autostart_profile() {
   frag="$ARCHMAGE_ROOT/config/templates/hyprland-autostart.fragment"
   [[ -f "$frag" ]] || die "Missing template: $frag"
   profile_path="$ARCHMAGE_MNT/home/${user_name}/.bash_profile"
-  install -d -m 0755 "$ARCHMAGE_MNT/home/${user_name}"
+  install -d -m 0755 "$ARCHMAGE_MNT/home/${user_name}" "$ARCHMAGE_MNT/etc/archmage"
   touch "$profile_path"
-  install -m 0644 "$frag" "$ARCHMAGE_MNT/tmp/archmage-hypr-autostart"
+  # Do not stage under /mnt/tmp: arch-chroot mounts tmpfs on /tmp and hides host files.
+  install -m 0644 "$frag" "$ARCHMAGE_MNT/etc/archmage/hypr-autostart.fragment"
 
   arch_chroot_run "set -euo pipefail
 id '${user_name}' >/dev/null
@@ -104,10 +105,10 @@ fi
 touch /home/${user_name}/.bash_profile
 chown '${user_name}:${user_name}' /home/${user_name}/.bash_profile
 if ! grep -q 'archmage-hyprland-autostart' /home/${user_name}/.bash_profile; then
-  cat /tmp/archmage-hypr-autostart >> /home/${user_name}/.bash_profile
+  cat /etc/archmage/hypr-autostart.fragment >> /home/${user_name}/.bash_profile
   chown '${user_name}:${user_name}' /home/${user_name}/.bash_profile
 fi
-rm -f /tmp/archmage-hypr-autostart"
+rm -f /etc/archmage/hypr-autostart.fragment"
 }
 
 desktop_hyprland_post() {
