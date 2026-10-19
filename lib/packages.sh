@@ -10,8 +10,12 @@ profiles_list_packages() {
   file="$(profiles_yaml_path)"
   awk -v profile="$profile" '
     $0 ~ "^" profile ":" { found=1; next }
-    found && /^[a-zA-Z0-9_]+:/ && $0 !~ /^  / { exit }
-    found && /^  - / { gsub(/^  - /, ""); gsub(/[[:space:]]+$/, ""); if (length($0)) print }
+    found && /^[a-zA-Z0-9_]+:/ { exit }
+    found && /^[[:space:]]+- / {
+      sub(/^.*-[[:space:]]+/, "")
+      gsub(/[[:space:]]+$/, "")
+      if (length($0)) print
+    }
   ' "$file"
 }
 
