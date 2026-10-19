@@ -115,6 +115,7 @@ Destructive disk steps require confirming `YES /dev/yourdisk`.
 | `ARCHMAGE_NO_BANNER` | Short header instead of the full logo |
 | `ARCHMAGE_NO_CLEAR` | Do not clear the screen before the banner |
 | `NO_COLOR` | Disable ANSI colors |
+| `ARCHMAGE_VERBOSE` | Set to `1` to show INFO logs and command output on the terminal (default: log file only) |
 
 ## License
 

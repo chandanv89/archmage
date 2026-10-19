@@ -16,12 +16,12 @@ ui_init() {
 ui_heading() {
   local title="$1"
   echo "" >&2
-  echo "=== $title ===" >&2
+  color_print_stderr cyan_bold "=== $title ==="
   echo "" >&2
 }
 
 ui_msg() {
-  echo "$1" >&2
+  color_print_stderr dim "$1"
 }
 
 ui_pause() {
@@ -48,10 +48,12 @@ ui_input() {
     result="$(dialog --stdout --inputbox "$prompt" 10 70 "$default")" || return 1
   else
     if [[ -n "$default" ]]; then
-      read -r -p "$prompt [$default]: " result
+      printf '%b%s %b[%s]:%b ' "$C_YELLOW" "$prompt" "$C_DIM" "$default" "$C_RESET" >&2
+      read -r result
       result="${result:-$default}"
     else
-      read -r -p "$prompt: " result
+      printf '%b%s:%b ' "$C_YELLOW" "$prompt" "$C_RESET" >&2
+      read -r result
     fi
   fi
   printf '%s' "$result"
@@ -63,7 +65,8 @@ ui_password() {
   if [[ "$UI_USE_DIALOG" -eq 1 ]]; then
     result="$(dialog --stdout --insecure --passwordbox "$prompt" 10 70)" || return 1
   else
-    read -r -s -p "$prompt: " result
+    printf '%b%s:%b ' "$C_YELLOW" "$prompt" "$C_RESET" >&2
+    read -r -s result
     echo "" >&2
   fi
   printf '%s' "$result"
@@ -96,16 +99,17 @@ ui_menu() {
   ui_heading "$prompt"
   i=1
   for opt in "${options[@]}"; do
-    echo "  $i) $opt" >&2
+    printf '%b  %s) %s%b\n' "$C_DIM" "$i" "$opt" "$C_RESET" >&2
     i=$((i + 1))
   done
   while true; do
-    read -r -p "Choice [1-${#options[@]}]: " choice
+    printf '%bChoice [1-%s]:%b ' "$C_GREEN" "${#options[@]}" "$C_RESET" >&2
+    read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
       printf '%s' "${options[$((choice - 1))]}"
       return 0
     fi
-    echo "Invalid choice." >&2
+    color_print_stderr yellow "Invalid choice."
   done
 }
 
@@ -125,7 +129,8 @@ ui_yesno() {
   local hint="y/N"
   [[ "$default_yes" -eq 1 ]] && hint="Y/n"
   local ans
-  read -r -p "$prompt [$hint]: " ans
+  printf '%b%s %b[%s]:%b ' "$C_YELLOW" "$prompt" "$C_DIM" "$hint" "$C_RESET" >&2
+  read -r ans
   ans="${ans,,}"
   if [[ -z "$ans" ]]; then
     [[ "$default_yes" -eq 1 ]] && return 0

@@ -4,6 +4,8 @@ set -euo pipefail
 ARCHMAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export ARCHMAGE_ROOT
 
+# shellcheck source=lib/color.sh
+source "$ARCHMAGE_ROOT/lib/color.sh"
 # shellcheck source=lib/common.sh
 source "$ARCHMAGE_ROOT/lib/common.sh"
 # shellcheck source=lib/prereqs.sh
@@ -92,6 +94,7 @@ run_step() {
   if declare -f "$skip_fn" >/dev/null 2>&1; then
     if "$skip_fn"; then
       log_info "Skipping step $id (already satisfied)"
+      color_print_stderr dim "  Skipping: $id (already done)"
       return 0
     fi
   fi
@@ -101,15 +104,16 @@ run_step() {
   fi
 
   ui_heading "Step: $id"
-  log_info "Running step: $id"
+  log_step "Running step: $id"
   "$run_fn"
   state_mark_step_done "$id"
-  log_info "Completed step: $id"
+  log_step_done "  Completed: $id"
 }
 
 main() {
   parse_cli_args "$@"
   require_root
+  color_init
 
   if [[ "$ARCHMAGE_SHOW_PATHS" -eq 1 ]]; then
     archmage_print_paths
@@ -154,7 +158,7 @@ main() {
     run_step "$step"
   done
 
-  log_info "All steps completed."
+  log_step_done "All steps completed."
 }
 
 main "$@"

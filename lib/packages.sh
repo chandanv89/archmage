@@ -36,23 +36,51 @@ profiles_get_meta() {
   ' "$file"
 }
 
+packages_normalize_choice() {
+  disk_normalize_path "$1"
+}
+
+packages_infer_desktop_profile() {
+  local saved pkgs
+  saved="$(state_get desktop_profile)"
+  if [[ -n "$saved" ]]; then
+    printf '%s' "$saved"
+    return 0
+  fi
+  pkgs="$(state_get pacstrap_packages)"
+  case " ${pkgs} " in
+    *" hyprland "*) printf '%s' "hyprland" ;;
+    *" plasma-meta "*) printf '%s' "kde" ;;
+    *" gnome "*) printf '%s' "gnome" ;;
+    *" xfce4 "*) printf '%s' "xfce" ;;
+    *) printf '%s' "none" ;;
+  esac
+}
+
 packages_select_kernel() {
   local k
   k="$(state_get kernel_pkg)"
   if [[ -n "$k" ]]; then
-    echo "$k"
+    printf '%s' "$k"
     return 0
   fi
   k="$(ui_menu "Kernel package" "linux" "linux-lts" "linux-zen")"
+  k="$(packages_normalize_choice "$k")"
   state_set kernel_pkg "$k"
-  echo "$k"
+  printf '%s' "$k"
 }
 
 packages_select_desktop() {
   local d
+  d="$(packages_infer_desktop_profile)"
+  if [[ -n "$d" && "$d" != "none" ]]; then
+    state_set desktop_profile "$d"
+    printf '%s' "$d"
+    return 0
+  fi
   d="$(state_get desktop_profile)"
   if [[ -n "$d" ]]; then
-    echo "$d"
+    printf '%s' "$d"
     return 0
   fi
   d="$(ui_menu "Desktop environment" \
@@ -61,8 +89,9 @@ packages_select_desktop() {
     "gnome" \
     "xfce" \
     "hyprland")"
+  d="$(packages_normalize_choice "$d")"
   state_set desktop_profile "$d"
-  echo "$d"
+  printf '%s' "$d"
 }
 
 packages_select_bootloader() {
@@ -157,7 +186,7 @@ step_pacstrap_run() {
     return 0
   fi
 
-  pacstrap -K "$ARCHMAGE_MNT" "${pkgs[@]}"
+  run_cmd pacstrap -K "$ARCHMAGE_MNT" "${pkgs[@]}"
 }
 
 step_fstab_can_skip() {
@@ -168,11 +197,14 @@ step_fstab_run() {
   require_cmd genfstab
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
     log_info "[dry-run] genfstab -U $ARCHMAGE_MNT"
+    color_print_stderr dim "  [dry-run] genfstab"
     return 0
   fi
-  genfstab -U "$ARCHMAGE_MNT" > "$ARCHMAGE_MNT/etc/fstab"
+  task_run "Generating fstab..." bash -c "genfstab -U $(printf '%q' "$ARCHMAGE_MNT") > $(printf '%q' "$ARCHMAGE_MNT/etc/fstab")"
   ui_msg "Generated fstab:"
-  cat "$ARCHMAGE_MNT/etc/fstab"
+  while IFS= read -r line; do
+    color_print_stderr dim "  $line"
+  done < "$ARCHMAGE_MNT/etc/fstab"
   if ui_yesno "Edit fstab in nano before continuing?" 0; then
     nano "$ARCHMAGE_MNT/etc/fstab"
   fi

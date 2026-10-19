@@ -31,14 +31,36 @@ log() {
   local level="$1"
   shift
   local msg="$*"
-  local ts
+  local ts line
   ts="$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')"
-  printf '[%s] [%s] %s\n' "$ts" "$level" "$msg" | tee -a "$ARCHMAGE_LOG" >&2
+  line="[${ts}] [${level}] ${msg}"
+  _log_file_append "$line"
+  case "$level" in
+    ERROR) color_print_stderr red "$msg" ;;
+    WARN) color_print_stderr yellow "$msg" ;;
+    INFO)
+      if [[ "${ARCHMAGE_VERBOSE:-0}" -eq 1 ]]; then
+        color_print_stderr dim "$msg"
+      fi
+      ;;
+  esac
 }
 
 log_info() { log INFO "$@"; }
 log_warn() { log WARN "$@"; }
 log_error() { log ERROR "$@"; }
+
+log_step() {
+  local msg="$*"
+  log_info "$msg"
+  color_print_stderr cyan_bold "$msg"
+}
+
+log_step_done() {
+  local msg="$*"
+  log_info "$msg"
+  color_print_stderr green "$msg"
+}
 
 die() {
   log_error "$@"
@@ -66,15 +88,38 @@ require_cmd() {
 init_logging() {
   mkdir -p "$(dirname "$ARCHMAGE_LOG")" "$ARCHMAGE_STATE_DIR"
   touch "$ARCHMAGE_LOG"
+  color_init
   log_info "Archmage $ARCHMAGE_VERSION starting (dry_run=$ARCHMAGE_DRY_RUN)"
+}
+
+run_cmd_human_label() {
+  local cmd="$1"
+  case "$cmd" in
+    pacstrap) echo "Installing system packages (may take several minutes)..." ;;
+    pacman) echo "Installing packages..." ;;
+    reflector) echo "Refreshing mirror list..." ;;
+    grub-install) echo "Installing GRUB to disk..." ;;
+    grub-mkconfig) echo "Generating GRUB config..." ;;
+    mkfs.ext4|mkfs.btrfs|mkfs.fat|mkswap) echo "Creating filesystem..." ;;
+    wipefs) echo "Clearing old partition signatures..." ;;
+    sfdisk) echo "Writing partition table..." ;;
+    mount|swapon) echo "Mounting volumes..." ;;
+    genfstab) echo "Generating fstab..." ;;
+    arch-chroot) echo "Running setup in target system..." ;;
+    loadkeys) echo "Setting console keymap..." ;;
+    timedatectl) echo "Enabling NTP..." ;;
+    ping) echo "Testing network..." ;;
+    *) echo "Running ${cmd}..." ;;
+  esac
 }
 
 run_cmd() {
   log_info "+ $*"
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
+    color_print_stderr dim "  [dry-run] $*"
     return 0
   fi
-  "$@"
+  task_run "$(run_cmd_human_label "$1")" "$@"
 }
 
 run_cmd_eval() {
@@ -185,10 +230,11 @@ arch_chroot_run() {
   require_cmd arch-chroot
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
     log_info "[dry-run] arch-chroot $ARCHMAGE_MNT bash -c $(printf '%q' "$script")"
+    color_print_stderr dim "  [dry-run] arch-chroot configure"
     return 0
   fi
-  if ! arch-chroot "$ARCHMAGE_MNT" /bin/bash -euo pipefail -c "$script"; then
-    die "Command failed inside arch-chroot (see output above)."
+  if ! task_run "Configuring installed system..." arch-chroot "$ARCHMAGE_MNT" /bin/bash -euo pipefail -c "$script"; then
+    die "Command failed inside arch-chroot (see $ARCHMAGE_LOG)."
   fi
 }
 

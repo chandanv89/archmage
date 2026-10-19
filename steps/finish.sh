@@ -12,7 +12,7 @@ step_finish_run() {
   ui_msg "Bootloader:  $(state_get bootloader_installed)"
   ui_msg "Hostname:    $(state_get hostname)"
   ui_msg "User:        $(state_get username)"
-  ui_msg "Desktop:     $(state_get desktop_profile)"
+  ui_msg "Desktop:     $(packages_infer_desktop_profile)"
   ui_msg "Log file:    $ARCHMAGE_LOG"
   ui_msg "State:       $ARCHMAGE_STATE_FILE"
   if [[ -f "$ARCHMAGE_STATE_JSON" ]]; then
@@ -24,7 +24,7 @@ step_finish_run() {
   fi
   ui_msg "Profiles:    $ARCHMAGE_ROOT/config/profiles.yaml"
   ui_msg ""
-  ui_msg "Archmage installation complete."
+  log_step_done "Archmage installation complete."
 
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
     ui_msg "Dry-run mode: no changes were applied to disk."

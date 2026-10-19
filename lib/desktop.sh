@@ -33,8 +33,10 @@ step_desktop_can_skip() {
 
 step_desktop_run() {
   local desktop
-  desktop="$(state_get desktop_profile)"
-  if [[ -z "$desktop" ]]; then
+  desktop="$(packages_infer_desktop_profile)"
+  if [[ -z "$(state_get desktop_profile)" && "$desktop" != "none" ]]; then
+    state_set desktop_profile "$desktop"
+  elif [[ -z "$(state_get desktop_profile)" ]]; then
     desktop="$(packages_select_desktop)"
   fi
 

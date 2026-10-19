@@ -16,7 +16,7 @@ prereqs_try_pacman_install() {
     return 1
   fi
   log_info "Installing package: $pkg ($(prereqs_pacman_hint "$pkg"))"
-  pacman -Sy --needed --noconfirm "$pkg"
+  run_cmd pacman -Sy --needed --noconfirm "$pkg"
 }
 
 # Ensure command exists; on the live ISO offer or auto-install the given pacman package.
