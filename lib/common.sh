@@ -187,7 +187,9 @@ arch_chroot_run() {
     log_info "[dry-run] arch-chroot $ARCHMAGE_MNT bash -c $(printf '%q' "$script")"
     return 0
   fi
-  arch-chroot "$ARCHMAGE_MNT" /bin/bash -euo pipefail -c "$script"
+  if ! arch-chroot "$ARCHMAGE_MNT" /bin/bash -euo pipefail -c "$script"; then
+    die "Command failed inside arch-chroot (see output above)."
+  fi
 }
 
 load_config_file() {

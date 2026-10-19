@@ -70,6 +70,27 @@ disk_pick_device() {
   echo "$disk"
 }
 
+disk_from_partition() {
+  local part="$1"
+  local pk
+  [[ -n "$part" ]] || return 1
+  pk="$(lsblk -no PKNAME "$part" 2>/dev/null | head -n1)"
+  [[ -n "$pk" ]] || return 1
+  echo "/dev/${pk}"
+}
+
+disk_ensure_install_disk_state() {
+  local d
+  d="$(state_get disk)"
+  if disk_validate_path "$d"; then
+    return 0
+  fi
+  d="$(disk_from_partition "$(state_get part_root)")"
+  disk_validate_path "$d" || die "Install disk is unknown. Re-run the disk step or set disk in state."
+  state_set disk "$d"
+  log_info "Derived install disk: $d"
+}
+
 disk_root_fs_type() {
   local fs
   fs="$(state_get root_fs)"
@@ -274,5 +295,6 @@ step_disk_run() {
   esac
 
   disk_format_partitions
-  lsblk -f "$disk" || true
+  disk_ensure_install_disk_state
+  lsblk -f "$(state_get disk)" || true
 }

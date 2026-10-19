@@ -47,8 +47,10 @@ EOS
 
 bootloader_install_grub() {
   local disk mode uuid kernel
+  disk_ensure_install_disk_state
   disk="$(state_get disk)"
   mode="$(state_get boot_mode)"
+  [[ -n "$disk" ]] || die "GRUB install needs install disk (e.g. /dev/sda) in state."
   uuid="$(bootloader_root_uuid)"
   kernel="$(state_get kernel_pkg)"
   [[ -z "$kernel" ]] && kernel="linux"
