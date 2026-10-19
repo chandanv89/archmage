@@ -24,6 +24,7 @@ step_finish_run() {
   fi
   ui_msg "Profiles:    $ARCHMAGE_ROOT/config/profiles.yaml"
   ui_msg ""
+  desktop_finish_notes
   log_step_done "Archmage installation complete."
 
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then

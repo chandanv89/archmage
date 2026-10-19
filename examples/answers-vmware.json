@@ -6,7 +6,7 @@
   "use_swap": "1",
   "kernel_pkg": "linux",
   "bootloader": "grub",
-  "desktop_profile": "none",
+  "desktop_profile": "hyprland",
   "extras_audio": "1",
   "extras_bluetooth": "0",
   "timezone": "Europe/Dublin",

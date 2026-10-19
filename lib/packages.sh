@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+ARCHMAGE_DEFAULT_DESKTOP="hyprland"
+
 profiles_yaml_path() {
   echo "$ARCHMAGE_ROOT/config/profiles.yaml"
 }
@@ -78,17 +80,12 @@ packages_select_desktop() {
     printf '%s' "$d"
     return 0
   fi
-  d="$(state_get desktop_profile)"
-  if [[ -n "$d" ]]; then
-    printf '%s' "$d"
-    return 0
-  fi
-  d="$(ui_menu "Desktop environment" \
-    "none" \
-    "kde" \
-    "gnome" \
-    "xfce" \
-    "hyprland")"
+  d="$(config_or_prompt desktop_profile "Desktop environment" "$ARCHMAGE_DEFAULT_DESKTOP" \
+    "hyprland|Hyprland (default)" \
+    "none|No desktop" \
+    "kde|KDE Plasma" \
+    "gnome|GNOME" \
+    "xfce|Xfce")"
   d="$(packages_normalize_choice "$d")"
   state_set desktop_profile "$d"
   printf '%s' "$d"

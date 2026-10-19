@@ -25,8 +25,10 @@ reading the wiki; it runs a fixed pipeline with prompts and writes state under
 | Disk layout | One target disk, guided `sfdisk` (or optional manual `fdisk` path); wipes after `YES /dev/disk` |
 | Packages | Fixed `base` set in `config/profiles.yaml` plus one kernel (`linux` / `linux-lts` / `linux-zen`), Intel/AMD microcode when detected, **GRUB** (BIOS or UEFI) or **systemd-boot** (UEFI only), NetworkManager, sudo, reflector mirror refresh |
 | Users | Root + one normal user (passwords), `wheel` in sudoers, hostname, locale/timezone/keymap from menus |
-| Desktop (optional) | Preset package lists only: **none**, **KDE**, **GNOME**, **XFCE**, **Hyprland**; optional Pipewire and Bluetooth |
-| Boot | Installs bootloader to the disk you selected; enables display manager only when the profile defines one (Hyprland uses seatd, no DM by default) |
+| Desktop (optional) | Preset package lists: **Hyprland** (default), **none**, **KDE**, **GNOME**, **XFCE**; optional Pipewire and Bluetooth |
+| Boot | Installs bootloader to the disk you selected |
+| KDE / GNOME / XFCE | `graphical.target`, display manager package + **enable** (SDDM / GDM / LightDM), `mesa` and portal packages, user in `video`/`input`/`render` (and related groups) |
+| Hyprland | **No login manager** - `seatd`, user in `seat` group, minimal `~/.config/hypr/hyprland.conf`, autostart on **tty1** via `.bash_profile`; `mesa` for VMware/Intel/AMD. See [Hyprland getting started](https://wiki.hypr.land/Getting-Started/Installation/) |
 
 What it **does not** do: disk encryption (LUKS), LVM, ZFS, dual-boot with Windows,
 custom mkinitcpio hooks, secure boot, arbitrary package lists, full disk
