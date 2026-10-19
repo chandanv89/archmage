@@ -40,7 +40,7 @@ ui_input() {
   local prompt="$1"
   local default="${2:-}"
   local result=""
-  if ui_is_non_interactive; then
+  if [[ -n "$ARCHMAGE_CONFIG" ]]; then
     printf '%s' "$default"
     return 0
   fi

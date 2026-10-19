@@ -139,6 +139,22 @@ device_is_safe_target() {
   return 0
 }
 
+disk_normalize_path() {
+  local raw="$1"
+  raw="${raw//$'\r'/}"
+  raw="${raw%%$'\n'*}"
+  raw="${raw#"${raw%%[![:space:]]*}"}"
+  raw="${raw%"${raw##*[![:space:]]}"}"
+  printf '%s' "$raw"
+}
+
+disk_validate_path() {
+  local disk="$1"
+  [[ "$disk" =~ ^/dev/[a-zA-Z0-9_-]+$ ]] || return 1
+  [[ -b "$disk" ]] || return 1
+  return 0
+}
+
 confirm_disk_wipe() {
   local disk="$1"
   ui_heading "Destructive disk operation"
@@ -146,10 +162,14 @@ confirm_disk_wipe() {
   ui_msg ""
   lsblk -f "$disk" 2>/dev/null || true
   ui_msg ""
-  ui_msg "Type YES followed by the disk name (e.g. YES $disk) to continue."
-  local answer
+  ui_msg "Type exactly: YES $disk"
+  ui_msg "(YES must be uppercase; spacing as shown.)"
+  local answer expected
   answer="$(ui_input "Confirmation")"
-  if [[ "$answer" != "YES $disk" ]]; then
+  answer="$(disk_normalize_path "$answer")"
+  expected="YES ${disk}"
+  if [[ "$answer" != "$expected" ]]; then
+    log_error "Expected: '$expected' but got: '$answer'"
     die "Disk wipe not confirmed."
   fi
 }

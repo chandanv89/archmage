@@ -27,8 +27,9 @@ disk_pick_device() {
 
   local disk
   disk="$(config_or_prompt disk "Target disk (e.g. /dev/vda)" "")"
+  disk="$(disk_normalize_path "$disk")"
   [[ -n "$disk" ]] || die "Disk is required."
-  [[ -b "$disk" ]] || die "Not a block device: $disk"
+  disk_validate_path "$disk" || die "Invalid disk '$disk'. Enter only the device path (e.g. /dev/sda), not the full lsblk listing."
   device_is_safe_target "$disk" || die "Disk $disk is mounted or not a safe target."
 
   state_set disk "$disk"
@@ -71,16 +72,16 @@ disk_partition_uefi_gpt() {
   if [[ "$want_swap" == "1" ]]; then
     script="$(cat <<EOF
 label: gpt
-, size=1G, type=uefi
-, size=4G, type=swap
-, type=linux
+size=1G, type=U
+size=4G, type=S
+size=, type=linux
 EOF
 )"
   else
     script="$(cat <<EOF
 label: gpt
-, size=1G, type=uefi
-, type=linux
+size=1G, type=U
+size=, type=linux
 EOF
 )"
   fi
@@ -98,6 +99,7 @@ EOF
     return 0
   fi
   confirm_disk_wipe "$disk"
+  disk_wipe_partition_table "$disk"
   printf '%s\n' "$script" | sfdisk "$disk"
   partprobe "$disk" 2>/dev/null || true
   sleep 1
@@ -111,6 +113,13 @@ EOF
   fi
 }
 
+disk_wipe_partition_table() {
+  local disk="$1"
+  log_info "Clearing existing partition table on $disk"
+  run_cmd wipefs -af "$disk"
+  run_cmd sfdisk --wipe always --delete "$disk" </dev/null 2>/dev/null || true
+}
+
 disk_partition_bios_mbr() {
   local disk="$1"
   local want_swap="$2"
@@ -118,14 +127,14 @@ disk_partition_bios_mbr() {
   if [[ "$want_swap" == "1" ]]; then
     script="$(cat <<EOF
 label: dos
-, size=4G, type=swap
-, type=linux
+size=4G, type=swap
+size=, type=83
 EOF
 )"
   else
     script="$(cat <<EOF
 label: dos
-, type=linux
+size=, type=83
 EOF
 )"
   fi
@@ -141,6 +150,7 @@ EOF
     return 0
   fi
   confirm_disk_wipe "$disk"
+  disk_wipe_partition_table "$disk"
   printf '%s\n' "$script" | sfdisk "$disk"
   partprobe "$disk" 2>/dev/null || true
   sleep 1
