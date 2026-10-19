@@ -84,11 +84,12 @@ choices_pick_locale() {
 }
 
 choices_pick_mirror_country() {
-  local guessed default_cc
+  local guessed default_cc choice
   guessed="$(mirrors_guess_country)"
   default_cc="${guessed:-US}"
-  ui_choose_state mirror_country "Mirror country (reflector)" "$default_cc" \
-    "IE|Ireland" \
+  choice="$(ui_choose_state mirror_country "Mirror country (reflector)" "$default_cc" \
+    "FAST|Fastest HTTPS (any country)" \
+    "IE|Ireland (falls back to UK/NL if needed)" \
     "GB|United Kingdom" \
     "US|United States" \
     "DE|Germany" \
@@ -99,5 +100,6 @@ choices_pick_mirror_country() {
     "IN|India" \
     "SG|Singapore" \
     "JP|Japan" \
-    "__custom__|Other (two-letter country code)"
+    "__custom__|Other (two-letter country code)")"
+  printf '%s' "$choice"
 }
