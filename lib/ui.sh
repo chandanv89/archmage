@@ -79,7 +79,7 @@ ui_menu() {
   local i choice
 
   if ui_is_non_interactive; then
-    log_warn "Non-interactive: menu '${prompt}' -> default '${options[0]}'"
+    log_info "Non-interactive: menu '${prompt}' -> default '${options[0]}'"
     printf '%s' "${options[0]}"
     return 0
   fi
@@ -139,23 +139,82 @@ ui_yesno() {
   [[ "$ans" == "y" || "$ans" == "yes" ]]
 }
 
-config_or_prompt() {
+# Menu options: "value|Label text". Returns the value part.
+ui_menu_labeled() {
+  local prompt="$1"
+  shift
+  local -a raw=("$@")
+  local -a labels=()
+  local item val label pick
+
+  for item in "${raw[@]}"; do
+    val="${item%%|*}"
+    label="${item#*|}"
+    if [[ "$label" == "$item" ]]; then
+      label="$item"
+      val="$item"
+    fi
+    labels+=("$label")
+  done
+
+  pick="$(ui_menu "$prompt" "${labels[@]}")"
+
+  for item in "${raw[@]}"; do
+    val="${item%%|*}"
+    label="${item#*|}"
+    if [[ "$label" == "$item" ]]; then
+      label="$item"
+      val="$item"
+    fi
+    if [[ "$pick" == "$label" ]]; then
+      printf '%s' "$val"
+      return 0
+    fi
+  done
+  printf '%s' "${raw[0]%%|*}"
+}
+
+# Set state[key] once; menu (labeled) or text fallback. Prints value to stdout only.
+ui_choose_state() {
   local key="$1"
   local prompt="$2"
   local default="${3:-}"
-  local existing
+  shift 3
+  local -a menu_opts=("$@")
+  local existing choice custom_default
+
   existing="$(state_get "$key")"
   if [[ -n "$existing" ]]; then
-    echo "$existing"
+    printf '%s' "$existing"
     return 0
   fi
+
   if [[ -n "$ARCHMAGE_CONFIG" ]]; then
-    echo "$default"
     state_set "$key" "$default"
+    printf '%s' "$default"
     return 0
   fi
-  local val
-  val="$(ui_input "$prompt" "$default")"
-  state_set "$key" "$val"
-  echo "$val"
+
+  if [[ ${#menu_opts[@]} -gt 0 ]]; then
+    choice="$(ui_menu_labeled "$prompt" "${menu_opts[@]}")"
+    case "$choice" in
+      __default__)
+        choice="$default"
+        ;;
+      __custom__)
+        custom_default="$default"
+        [[ "$key" == "console_font" ]] && custom_default=""
+        choice="$(ui_input "Enter custom value" "$custom_default")"
+        ;;
+    esac
+  else
+    choice="$(ui_input "$prompt" "$default")"
+  fi
+
+  state_set "$key" "$choice"
+  printf '%s' "$choice"
+}
+
+config_or_prompt() {
+  ui_choose_state "$1" "$2" "${3:-}"
 }

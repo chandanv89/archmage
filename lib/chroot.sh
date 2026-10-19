@@ -2,8 +2,8 @@
 
 chroot_configure_locale_time() {
   local tz locale keymap
-  tz="$(config_or_prompt timezone "Timezone (Area/Location)" "UTC")"
-  locale="$(config_or_prompt locale "Locale" "en_US.UTF-8")"
+  tz="$(choices_pick_timezone)"
+  locale="$(choices_pick_locale)"
   keymap="$(state_get keymap)"
   [[ -z "$keymap" ]] && keymap="us"
 

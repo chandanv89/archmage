@@ -19,9 +19,7 @@ step_mirrors_run() {
   local country
   country="$(state_get mirror_country)"
   if [[ -z "$country" ]]; then
-    local guessed
-    guessed="$(mirrors_guess_country)"
-    country="$(config_or_prompt mirror_country "Mirror country code (e.g. US, IE)" "$guessed")"
+    country="$(choices_pick_mirror_country)"
   fi
   [[ -n "$country" ]] || die "Country code required for reflector."
 
@@ -33,5 +31,7 @@ step_mirrors_run() {
   run_cmd reflector --country "$country" --protocol https --sort rate --save "$mirrorlist"
   state_set mirror_country "$country"
   ui_msg "Mirrorlist updated for country: $country"
-  head -n 5 "$mirrorlist" 2>/dev/null || true
+  head -n 5 "$mirrorlist" 2>/dev/null | while IFS= read -r line; do
+    color_print_stderr dim "  $line"
+  done
 }

@@ -26,6 +26,8 @@ source "$ARCHMAGE_ROOT/lib/disk.sh"
 source "$ARCHMAGE_ROOT/lib/mount.sh"
 # shellcheck source=lib/mirrors.sh
 source "$ARCHMAGE_ROOT/lib/mirrors.sh"
+# shellcheck source=lib/choices.sh
+source "$ARCHMAGE_ROOT/lib/choices.sh"
 # shellcheck source=lib/packages.sh
 source "$ARCHMAGE_ROOT/lib/packages.sh"
 # shellcheck source=lib/chroot.sh
@@ -104,10 +106,10 @@ run_step() {
   fi
 
   ui_heading "Step: $id"
-  log_step "Running step: $id"
+  log_info "Running step: $id"
   "$run_fn"
   state_mark_step_done "$id"
-  log_step_done "  Completed: $id"
+  color_print_stderr green "  Done."
 }
 
 main() {
