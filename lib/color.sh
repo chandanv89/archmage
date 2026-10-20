@@ -66,6 +66,25 @@ task_status_truncate() {
   fi
 }
 
+# One updating status line on stderr; clear previous content so short lines do not leave junk.
+task_status_tty_line() {
+  local label="$1"
+  local suffix="$2"
+  local cols line pad max
+  cols="${COLUMNS:-80}"
+  max=$((cols - 1))
+  [[ "$max" -lt 40 ]] && max=40
+  line="  ${label}  ${suffix}"
+  if [[ ${#line} -gt $max ]]; then
+    line="${line:0:max}"
+  fi
+  printf '\r\033[K%b%s%b' "$C_CYAN" "$line" "$C_RESET" >&2
+  pad=$((max - ${#line}))
+  if (( pad > 0 )); then
+    printf '%*s' "$pad" '' >&2
+  fi
+}
+
 # Last meaningful line from a growing command log (pacstrap, reflector, etc.).
 task_status_pick_line() {
   local file="$1"
@@ -142,9 +161,9 @@ task_run() {
     fi
     if [[ -n "$detail" ]]; then
       detail="$(task_status_truncate "$detail")"
-      printf '\r%b  %s  %s%b' "$C_CYAN" "${label}" "${detail}" "$C_RESET" >&2
+      task_status_tty_line "$label" "$detail"
     else
-      printf '\r%b  %s %s%b' "$C_CYAN" "${label}" "${spin:i%4:1}" "$C_RESET" >&2
+      task_status_tty_line "$label" "${spin:i%4:1}"
     fi
     i=$((i + 1))
     sleep 0.15

@@ -66,7 +66,10 @@ packages_select_kernel() {
     printf '%s' "$k"
     return 0
   fi
-  k="$(ui_menu "Kernel package" "linux" "linux-lts" "linux-zen")"
+  k="$(ui_choose_state kernel_pkg "Kernel package" "linux" \
+    "linux|linux - latest stable kernel (default; best for most PCs)" \
+    "linux-lts|linux-lts - long-term support, fewer updates, conservative choice" \
+    "linux-zen|linux-zen - desktop-tuned kernel (often snappier, slightly more RAM)")"
   k="$(packages_normalize_choice "$k")"
   state_set kernel_pkg "$k"
   printf '%s' "$k"
