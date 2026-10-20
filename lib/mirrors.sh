@@ -36,20 +36,33 @@ mirrors_mirrorlist_has_servers() {
   [[ -f "$file" ]] && grep -q '^Server' "$file"
 }
 
+mirrors_reflector_activity_label() {
+  local country_spec="$1"
+  if [[ "$country_spec" == "*" || "$country_spec" == "FAST" ]]; then
+    printf '%s' "Ranking mirrors worldwide (may take a few minutes)..."
+  else
+    printf '%s' "Ranking mirrors for ${country_spec}..."
+  fi
+}
+
 mirrors_reflector_try() {
   local mirrorlist="$1"
-  shift
+  local label="$2"
+  shift 2
   if [[ "$ARCHMAGE_DRY_RUN" -eq 1 ]]; then
-    log_info "[dry-run] reflector $* --save $mirrorlist"
+    log_info "[dry-run] reflector $* --sort rate --latest 20 --save $mirrorlist"
     return 0
   fi
-  reflector "$@" --sort rate --latest 20 --save "$mirrorlist" 2>>"$ARCHMAGE_LOG"
+  # shellcheck disable=SC2086
+  task_run "$label" reflector $* --sort rate --latest 20 --save "$mirrorlist"
 }
 
 mirrors_reflector_update() {
   local country_spec="$1"
   local mirrorlist="$2"
   local -a attempts=()
+  local label
+  label="$(mirrors_reflector_activity_label "$country_spec")"
 
   if [[ "$country_spec" == "*" || "$country_spec" == "FAST" ]]; then
     attempts+=("--protocol https --protocol http")
@@ -62,7 +75,7 @@ mirrors_reflector_update() {
   local args
   for args in "${attempts[@]}"; do
     # shellcheck disable=SC2086
-    if mirrors_reflector_try "$mirrorlist" $args && mirrors_mirrorlist_has_servers "$mirrorlist"; then
+    if mirrors_reflector_try "$mirrorlist" "$label" $args && mirrors_mirrorlist_has_servers "$mirrorlist"; then
       return 0
     fi
     log_warn "Reflector found no usable mirrors for: reflector $args"

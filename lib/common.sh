@@ -97,7 +97,7 @@ run_cmd_human_label() {
   case "$cmd" in
     pacstrap) echo "Installing system packages (may take several minutes)..." ;;
     pacman) echo "Installing packages..." ;;
-    reflector) echo "Refreshing mirror list..." ;;
+    reflector) echo "Ranking mirrors (testing download speeds)..." ;;
     grub-install) echo "Installing GRUB to disk..." ;;
     grub-mkconfig) echo "Generating GRUB config..." ;;
     mkfs.ext4|mkfs.btrfs|mkfs.fat|mkswap) echo "Creating filesystem..." ;;

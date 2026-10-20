@@ -56,12 +56,65 @@ color_print_stderr() {
   esac
 }
 
+task_status_truncate() {
+  local text="$1"
+  local max="${2:-72}"
+  if [[ ${#text} -gt $max ]]; then
+    printf '%s...' "${text:0:$((max - 3))}"
+  else
+    printf '%s' "$text"
+  fi
+}
+
+# Last meaningful line from a growing command log (pacstrap, reflector, etc.).
+task_status_pick_line() {
+  local file="$1"
+  local kind="$2"
+  local line=""
+
+  [[ -f "$file" ]] || return 0
+
+  case "$kind" in
+    pacstrap)
+      line="$(grep -E '^\([0-9]+/[0-9]+\) (installing|reinstalling|upgrading|downloading|checking|removing)' "$file" 2>/dev/null | tail -1)"
+      if [[ -z "$line" ]]; then
+        line="$(grep -E '^(installing|downloading|upgrading|reinstalling) ' "$file" 2>/dev/null | tail -1)"
+      fi
+      if [[ -z "$line" ]]; then
+        line="$(grep -E '^:: (Processing|Running)' "$file" 2>/dev/null | tail -1)"
+      fi
+      ;;
+    reflector)
+      line="$(grep -iE 'Rating|Fetching|Testing|Downloading|Filtering|mirror' "$file" 2>/dev/null | tail -1)"
+      ;;
+    *)
+      line="$(task_status_pick_line "$file" pacstrap)"
+      if [[ -z "$line" ]]; then
+        line="$(task_status_pick_line "$file" reflector)"
+      fi
+      ;;
+  esac
+
+  line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  printf '%s' "$line"
+}
+
+task_run_detect_activity() {
+  case "$1" in
+    pacstrap) printf '%s' "pacstrap" ;;
+    reflector) printf '%s' "reflector" ;;
+    *) printf '%s' "" ;;
+  esac
+}
+
 # Run a command: spinner on TTY, stdout/stderr to log only unless ARCHMAGE_VERBOSE=1.
 task_run() {
   local label="$1"
   shift
-  local log_out log_ec pid spin i=0
+  local log_out log_ec pid spin i=0 activity detail
   local log_file="${ARCHMAGE_LOG:-/var/log/archmage.log}"
+
+  activity="$(task_run_detect_activity "$1")"
 
   if [[ "${ARCHMAGE_VERBOSE:-0}" -eq 1 ]] || ! color_is_tty; then
     if [[ "${ARCHMAGE_VERBOSE:-0}" -eq 1 ]] && color_is_tty; then
@@ -82,9 +135,17 @@ task_run() {
   ) &
   pid=$!
   spin='|/-\'
-  color_print_stderr cyan "  ${label}"
   while kill -0 "$pid" 2>/dev/null; do
-    printf '\r%b  %s %s%b' "$C_CYAN" "${label}" "${spin:i%4:1}" "$C_RESET" >&2
+    detail=""
+    if [[ -n "$activity" ]]; then
+      detail="$(task_status_pick_line "$log_out" "$activity")"
+    fi
+    if [[ -n "$detail" ]]; then
+      detail="$(task_status_truncate "$detail")"
+      printf '\r%b  %s  %s%b' "$C_CYAN" "${label}" "${detail}" "$C_RESET" >&2
+    else
+      printf '\r%b  %s %s%b' "$C_CYAN" "${label}" "${spin:i%4:1}" "$C_RESET" >&2
+    fi
     i=$((i + 1))
     sleep 0.15
   done
