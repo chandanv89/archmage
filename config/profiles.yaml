@@ -11,6 +11,7 @@ base_always:
     - texinfo
     - networkmanager
     - sudo
+    - net-tools
 
 bootloader_systemd_boot:
   packages:
@@ -79,6 +80,7 @@ desktop_hyprland:
     - wofi
     - kitty
     - polkit
+    - hyprpolkitagent
     - seatd
     - xdg-desktop-portal
     - xdg-desktop-portal-hyprland

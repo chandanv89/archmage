@@ -1,4 +1,23 @@
 # archmage-hyprland-autostart
-if [[ -z "$WAYLAND_DISPLAY" ]] && [[ "$(tty)" == /dev/tty1 ]]; then
-  exec dbus-run-session seatd-launch -- Hyprland
+# Hyprland has no display manager: log in on tty1 (Alt+F1). Other ttys stay text-only.
+if [[ -z "${WAYLAND_DISPLAY:-}" ]] && [[ "$(tty)" == /dev/tty1 ]]; then
+  export WLR_NO_HARDWARE_CURSORS=1
+  if grep -qi vmware /sys/class/dmi/id/product_name 2>/dev/null || lspci 2>/dev/null | grep -qi vmware; then
+    echo "archmage: VMware guest - enable 'Accelerate 3D graphics' in VM display settings, then reboot the VM." >&2
+  fi
+  if ! id -nG | tr ' ' '\n' | grep -qx seat; then
+    echo "archmage: you are not in the seat group; Hyprland cannot start." >&2
+    echo "  Ask root: usermod -aG seat,input ${USER}" >&2
+  elif systemctl is-active --quiet seatd; then
+    mkdir -p "${HOME}/.local/share/hyprland"
+    if ! dbus-run-session -- start-hyprland; then
+      echo "Hyprland exited. Latest log:" >&2
+      ls -t /run/user/$(id -u)/hypr/*/hyprland.log 2>/dev/null | head -1 | xargs tail -15 >&2
+      echo "Press Enter for a shell, or run: dbus-run-session -- start-hyprland" >&2
+      read -r _
+    fi
+  else
+    echo "archmage: seatd is not running." >&2
+    echo "  Ask root: systemctl enable --now seatd" >&2
+  fi
 fi

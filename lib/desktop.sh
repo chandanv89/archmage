@@ -25,6 +25,12 @@ desktop_enable_graphical_target() {
   local desktop
   desktop="$(packages_infer_desktop_profile)"
   [[ "$desktop" == "none" ]] && return 0
+  # Hyprland (no DM) starts from a tty login shell; keep multi-user.target.
+  if [[ "$desktop" == "hyprland" ]]; then
+    arch_chroot_run "systemctl set-default multi-user.target"
+    state_set graphical_target "0"
+    return 0
+  fi
   arch_chroot_run "systemctl set-default graphical.target"
   state_set graphical_target "1"
 }
@@ -64,21 +70,39 @@ desktop_dm_install_os_configs() {
 }
 
 desktop_hyprland_install_user_config() {
-  local user_name template conf home_cfg
+  local user_name overlay lua_pkg archmage_lua home_cfg keymap
   user_name="$(state_get username)"
   [[ -n "$user_name" ]] || die "Hyprland setup requires a user account (chroot_configure step)."
 
-  template="$ARCHMAGE_ROOT/config/templates/hyprland.conf"
-  [[ -f "$template" ]] || die "Missing template: $template"
+  overlay="$ARCHMAGE_ROOT/config/templates/hyprland-archmage.lua"
+  [[ -f "$overlay" ]] || die "Missing template: $overlay"
+
+  keymap="$(state_get keymap)"
+  [[ -z "$keymap" ]] && keymap="us"
 
   home_cfg="$ARCHMAGE_MNT/home/${user_name}/.config"
   install -d -m 0755 "$home_cfg/hypr" "$home_cfg/waybar"
-  install -m 0644 "$template" "$home_cfg/hypr/hyprland.conf"
+  lua_pkg="$ARCHMAGE_MNT/usr/share/hypr/hyprland.lua"
+  if [[ -f "$lua_pkg" ]]; then
+    install -m 0644 "$lua_pkg" "$home_cfg/hypr/hyprland.lua"
+  else
+    die "Hyprland on the target system has no /usr/share/hypr/hyprland.lua (expected Hyprland 0.56+)."
+  fi
+  archmage_lua="$ARCHMAGE_MNT/home/${user_name}/.config/hypr/archmage.lua"
+  install -m 0644 "$overlay" "$archmage_lua"
+  sed -i 's/\r$//' "$archmage_lua" 2>/dev/null || true
   if [[ -f "$ARCHMAGE_ROOT/config/templates/waybar.json" ]]; then
     install -m 0644 "$ARCHMAGE_ROOT/config/templates/waybar.json" "$home_cfg/waybar/config"
   fi
 
-  arch_chroot_run "chown -R '${user_name}:${user_name}' '/home/${user_name}/.config'"
+  arch_chroot_run "set -euo pipefail
+chown -R '${user_name}:${user_name}' '/home/${user_name}/.config'
+sed -i 's/kb_layout = \"us\"/kb_layout = \"${keymap}\"/' '/home/${user_name}/.config/hypr/archmage.lua'
+sed -i 's/local menu        = \"hyprlauncher\"/local menu        = \"wofi --show drun\"/' '/home/${user_name}/.config/hypr/hyprland.lua' || true
+if ! grep -q 'require(\"archmage\")' '/home/${user_name}/.config/hypr/hyprland.lua'; then
+  printf '%s\n' 'require(\"archmage\")' >> '/home/${user_name}/.config/hypr/hyprland.lua'
+fi
+rm -f '/home/${user_name}/.config/hypr/hyprland.conf'"
 }
 
 desktop_hyprland_autostart_profile() {
@@ -93,19 +117,21 @@ desktop_hyprland_autostart_profile() {
   profile_path="$ARCHMAGE_MNT/home/${user_name}/.bash_profile"
   install -d -m 0755 "$ARCHMAGE_MNT/home/${user_name}" "$ARCHMAGE_MNT/etc/archmage"
   touch "$profile_path"
-  # Do not stage under /mnt/tmp: arch-chroot mounts tmpfs on /tmp and hides host files.
   install -m 0644 "$frag" "$ARCHMAGE_MNT/etc/archmage/hypr-autostart.fragment"
+  sed -i 's/\r$//' "$ARCHMAGE_MNT/etc/archmage/hypr-autostart.fragment" 2>/dev/null || true
 
   arch_chroot_run "set -euo pipefail
 id '${user_name}' >/dev/null
 systemctl enable seatd.service
-if [[ -f /home/${user_name}/.config/hypr/hyprland.conf ]]; then
-  sed -i 's/kb_layout = us/kb_layout = ${keymap}/' /home/${user_name}/.config/hypr/hyprland.conf || true
-fi
+loginctl enable-linger '${user_name}' 2>/dev/null || true
 touch /home/${user_name}/.bash_profile
 chown '${user_name}:${user_name}' /home/${user_name}/.bash_profile
 if ! grep -q 'archmage-hyprland-autostart' /home/${user_name}/.bash_profile; then
+  if ! grep -q '\\.bashrc' /home/${user_name}/.bash_profile 2>/dev/null; then
+    printf '%s\n' '[[ -f ~/.bashrc ]] && . ~/.bashrc' >> /home/${user_name}/.bash_profile
+  fi
   cat /etc/archmage/hypr-autostart.fragment >> /home/${user_name}/.bash_profile
+  sed -i 's/\\r$//' /home/${user_name}/.bash_profile
   chown '${user_name}:${user_name}' /home/${user_name}/.bash_profile
 fi
 rm -f /etc/archmage/hypr-autostart.fragment"
@@ -147,8 +173,9 @@ desktop_finish_notes() {
 
   case "$desktop" in
     hyprland)
-      ui_msg "Hyprland: log in as ${user_name} on tty1; session should start automatically."
-      ui_msg "Manual start: dbus-run-session seatd-launch -- Hyprland"
+      ui_msg "Hyprland: no login manager. At boot use tty1 (Ctrl+Alt+F1), log in as ${user_name}."
+      ui_msg "System seatd is used; start with: dbus-run-session -- start-hyprland (not seatd-launch)."
+      ui_msg "If login loops, Hyprland crashed: read ~/.local/share/hyprland/hyprland.log"
       ui_msg "Docs: https://wiki.hypr.land/Getting-Started/Installation/"
       ;;
     kde|gnome|xfce)
